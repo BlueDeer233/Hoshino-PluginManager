@@ -3,10 +3,12 @@
 适用于hoshinobot的插件管理插件（稍微删改一下就能支持nonebot了）  
 仅支持nonebot 1.8.x、1.9.x，不支持nonebot2（已提交issue，但是作者认为冷重载更合适）  
 指令：插件列表、加载插件、卸载插件、重载插件、加载插件配置、重载插件配置  
-on_command、on_natural_language、on_notice、on_request都已在nonebot.plugin.PluginManager.remove_plugin中清理  
-已支持Service在hoshino.service管理Dict中的清理  
-已支持ServiceFunc在hoshino.trigger.chain中的清理  
-尚未支持scheduled_job在nonebot.scheduler中的清理  
+on_command、on_natural_language、on_notice、on_request都已在nonebot.plugin.PluginManager.remove_plugin中清理
+
+* 已支持Service在hoshino.service管理Dict中的清理  
+* 已支持ServiceFunc在hoshino.trigger.chain中的清理  
+* 尚未支持scheduled_job在nonebot.scheduler中的清理
+
 **简而言之对于存在scheduled_job的插件现无法做到卸载与热重载**  
 **正如nonebot2作者所言，该插件并不能完全卸载/重载插件，可能包含许多bugs，请慎用**  
 欢迎issue、fork、pull request
