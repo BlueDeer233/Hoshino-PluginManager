@@ -41,4 +41,5 @@ on_command、on_natural_language、on_notice、on_request都已在nonebot.plugin
 ## TODO
 
 1、批量加载、卸载、重载插件（与__bot__.py的逻辑保持一致）  
-2、想办法支持上scheduled_job的卸载
+2、想办法支持上scheduled_job的卸载  
+3、前端开发？（前端苦手求救！）
