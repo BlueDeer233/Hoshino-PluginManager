@@ -1,3 +1,5 @@
+import os
+import re
 import sys
 import nonebot
 import importlib
@@ -10,15 +12,11 @@ from hoshino.typing import CommandSession
 from hoshino.trigger import PrefixTrigger, SuffixTrigger, KeywordTrigger, RexTrigger
 
 '''
-适用于hoshinobot的插件管理插件（稍微删改一下就能支持nonebot了）
-仅支持nonebot 1.8.x、1.9.x，不支持nonebot2（已提交issue，但是作者认为冷重载更合适）
-指令：插件列表、加载插件、卸载插件、重载插件、卸载计划任务、加载插件配置、重载插件配置
+指令：插件列表、加载插件、卸载插件、重载插件、卸载计划任务、加载插件配置、重载插件配置、批量加载插件、批量卸载插件、批量重载插件
 on_command、on_natural_language、on_notice、on_request都已在nonebot.plugin.PluginManager.remove_plugin中清理
 已支持Service在hoshino.service管理Dict中的清理
 已支持ServiceFunc在hoshino.trigger.chain中的清理
-尚未支持scheduled_job在nonebot.scheduler中的清理
-简而言之对于存在scheduled_job的插件现无法做到卸载与热重载
-正如nonebot2作者所言，该插件并不能完全卸载/重载插件，可能包含许多bugs，请慎用
+已支持scheduled_job在nonebot.scheduler中的清理
 '''
 
 
@@ -49,11 +47,6 @@ async def load_plugin(session: CommandSession):
     module_path = 'hoshino.modules.' + module
     if module_path in sys.modules:
         await session.finish('该插件已加载，请使用重载插件指令')
-    # try:
-    #     importlib.import_module('hoshino.config.' + module)
-    #     await session.send(f'Succeeded to load config of "{module}"')
-    # except ModuleNotFoundError:
-    #     await session.send(f'Not found config of "{module}"')
     nonebot.plugin.load_plugin(module_path)
     if module_path in sys.modules:
         logger.info(f'Succeeded to load "{module}"')
@@ -109,8 +102,8 @@ async def unload_plugin(session: CommandSession):
     module_path = 'hoshino.modules.' + module
     if module_path not in sys.modules:
         await session.finish(f'该插件未被加载')
-    moudle_obj = sys.modules[module_path]
-    unload_services(moudle_obj)
+    module_obj = sys.modules[module_path]
+    unload_services(module_obj)
     if nonebot.plugin.PluginManager.remove_plugin(module_path):
         sys.modules.pop(module_path)
         logger.info(f'Succeeded to unload "{module}"')
@@ -131,8 +124,8 @@ async def reload_plugin(session: CommandSession):
     module_path = 'hoshino.modules.' + module
     if module_path not in sys.modules:
         await session.finish('该插件未被加载，请使用加载插件指令')
-    moudle_obj = sys.modules[module_path]
-    unload_services(moudle_obj)
+    module_obj = sys.modules[module_path]
+    unload_services(module_obj)
     new_plugin = nonebot.plugin.reload_plugin(module_path)
     if new_plugin is not None:
         logger.info(f'Succeeded to reload "{module}"')
@@ -143,7 +136,7 @@ async def reload_plugin(session: CommandSession):
 
 
 @on_command('卸载计划任务', aliases={'scheduled job unload', })
-async def unload_scheduled_job(session: CommandSession):
+async def unload_plugin(session: CommandSession):
     if session.ctx.get('group_id'):
         await session.finish('请私聊bot')
     if session.ctx['user_id'] not in session.bot.config.SUPERUSERS:
@@ -197,3 +190,98 @@ async def reload_plugin_config(session: CommandSession):
     except ModuleNotFoundError:
         logger.warning(f'Not found config of "{module}"')
         await session.send(f'无法找到该配置文件')
+
+
+def _load_plugin_directory(directory: str):
+    msg = ''
+    plugin_dir = os.path.join('hoshino/modules', directory)
+    count = set()
+    if not os.path.isdir(plugin_dir):
+        return '无法找到该文件夹'
+    for name in os.listdir(plugin_dir):
+        path = os.path.join(plugin_dir, name)
+        if os.path.isfile(path) and (name.startswith('_') or not name.endswith('.py')):
+            continue
+        if os.path.isdir(path) and (name.startswith('_') or not os.path.exists(os.path.join(path, '__init__.py'))):
+            continue
+        m = re.match(r'([_A-Z0-9a-z]+)(.py)?', name)
+        if not m:
+            continue
+        module_path = f'hoshino.modules.{directory}.{m.group(1)}'
+        if module_path in sys.modules:
+            logger.info(f'"{name}" is already loaded')
+            msg += f'模组{module_path}已被加载，跳过\n'
+            continue
+        result = nonebot.plugin.load_plugin(module_path)
+        if result:
+            count.add(result)
+        if module_path in sys.modules:
+            logger.info(f'Succeeded to load "{name}"')
+            msg += f'成功加载{module_path}\n'
+        else:
+            logger.warning(f'Failed to load "{name}"')
+            msg += f'模组{module_path}加载失败\n'
+    if (plug_num := len(count)) > 0:
+        msg += f'成功加载了{plug_num}个插件\n'
+    else:
+        msg += f'未找到任何插件\n'
+    return msg
+
+
+@on_command('批量加载插件', aliases={'plug dir load', 'plugin directory load'})
+async def load_plugin_directory(session: CommandSession):
+    if session.ctx.get('group_id'):
+        await session.finish('请私聊bot')
+    if session.ctx['user_id'] not in session.bot.config.SUPERUSERS:
+        await session.finish('你不是主人，没有此命令的权限')
+    await session.aget('directory', prompt='请输入需要加载的文件夹')
+    directory = session.state['directory']
+    msg = _load_plugin_directory(directory)
+    await session.send(msg)
+
+
+def _unload_plugin_directory(directory: str):
+    msg = ''
+    directory_path = f'hoshino.modules.{directory}'
+    count = 0
+    for module_path in list(filter(lambda x: x.startswith(directory_path), sys.modules.keys())):
+        module_obj = sys.modules[module_path]
+        unload_services(module_obj)
+        if nonebot.plugin.PluginManager.remove_plugin(module_path):
+            logger.info(f'Succeeded to unload "{module_path.split(".")[-1]}"')
+            msg += f'插件{module_path}卸载成功\n'
+        else:
+            logger.info(f'Succeeded to unload "{module_path}"')
+            msg += f'模组{module_path}卸载成功\n'
+        count += 1
+        sys.modules.pop(module_path)
+    if count > 0:
+        msg += f'成功卸载了{count}个插件/模组\n'
+    else:
+        msg += f'未找到任何插件\n'
+    return msg
+
+
+@on_command('批量卸载插件', aliases={'plug dir unload', 'plugin directory unload'})
+async def unload_plugin_directory(session: CommandSession):
+    if session.ctx.get('group_id'):
+        await session.finish('请私聊bot')
+    if session.ctx['user_id'] not in session.bot.config.SUPERUSERS:
+        await session.finish('你不是主人，没有此命令的权限')
+    await session.aget('directory', prompt='请输入需要卸载的文件夹')
+    directory = session.state['directory']
+    msg = _unload_plugin_directory(directory)
+    await session.send(msg)
+
+
+@on_command('批量重载插件', aliases={'plug dir reload', 'plugin directory reload'})
+async def reload_plugin_directory(session: CommandSession):
+    if session.ctx.get('group_id'):
+        await session.finish('请私聊bot')
+    if session.ctx['user_id'] not in session.bot.config.SUPERUSERS:
+        await session.finish('你不是主人，没有此命令的权限')
+    await session.aget('directory', prompt='请输入需要重载的文件夹')
+    directory = session.state['directory']
+    msg = _unload_plugin_directory(directory)
+    msg += _load_plugin_directory(directory)
+    await session.send(msg)

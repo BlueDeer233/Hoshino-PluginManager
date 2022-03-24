@@ -2,7 +2,7 @@
 
 适用于hoshinobot的插件管理插件（稍微删改一下就能支持nonebot了）  
 仅支持nonebot 1.8.x、1.9.x，不支持nonebot2（已提交issue，但是作者认为冷重载更合适）  
-指令：插件列表、加载插件、卸载插件、重载插件、卸载计划任务、加载插件配置、重载插件配置  
+指令：插件列表、加载插件、卸载插件、重载插件、卸载计划任务、加载插件配置、重载插件配置、批量加载插件、批量卸载插件、批量重载插件  
 on_command、on_natural_language、on_notice、on_request都已在nonebot.plugin.PluginManager.remove_plugin中清理
 
 * 已支持Service在hoshino.service管理Dict中的清理  
@@ -26,18 +26,22 @@ on_command、on_natural_language、on_notice、on_request都已在nonebot.plugin
 
 ## 指令
 
-|   命令    | 功能                                        |
-|:-------:|:------------------------------------------|
-|  插件列表   | 输出所有已加载插件（强烈建议初次使用该插件的用户朋友先运行一下这个指令）      |
-|  加载插件   | 根据引导加载插件（必须精确到module文件下的某个py文件，不需要输.py）   |
-|  卸载插件   | 根据引导卸载插件（要求同上）                            |
-|  重载插件   | 根据引导重载插件（要求同上）                            |
-| *卸载计划任务 | 根据引导卸载计划任务（需要输入scheduled_job的id）          |
-| *加载插件配置 | 根据引导重载插件加载hoshino.config目录下的配置文件（不需要输.py） |
-| *重载插件配置 | 根据引导重载插件重载hoshino.config目录下的配置文件（不需要输.py） |
+|   命令    | 功能                                                 |
+|:-------:|:---------------------------------------------------|
+|  插件列表   | 输出所有已加载插件（强烈建议初次使用该插件的用户朋友先运行一下这个指令）               |
+|  加载插件   | 根据引导加载插件（必须精确到module文件下的某个py文件，不需要输.py）            |
+|  卸载插件   | 根据引导卸载插件（要求同上）                                     |
+|  重载插件   | 根据引导重载插件（要求同上）                                     |
+| *卸载计划任务 | 根据引导卸载计划任务（需要输入scheduled_job的id）                   |
+| *加载插件配置 | 根据引导重载插件加载hoshino.config目录下的配置文件（不需要输.py）          |
+| *重载插件配置 | 根据引导重载插件重载hoshino.config目录下的配置文件（不需要输.py）          |
+| 批量加载插件  | 根据引导批量加载hoshino.modules文件夹下的文件夹（与__bot__.py逻辑保持一致） |
+| 批量卸载插件  | 根据引导批量卸载hoshino.modules文件夹下的文件夹（卸载所有文件夹下的文件）       |
+| 批量重载插件  | 根据引导批量重载hoshino.modules文件夹下的文件夹（逻辑见上两条）            |
 
 *注意：配置文件中变量的导入必须在函数内部（详见[test.py](load_test/test.py)）  
-*注意：在生成计划任务时必须指定id，否则无法卸载（详见[test.py](load_test/test.py)）
+*注意：在生成计划任务时必须指定id，否则无法卸载（详见[test.py](load_test/test.py)）  
+*注意：在所有重载操作前应先卸载插件内的计划任务，除非添加`replace_existing=True`（详见[test.py](load_test/test.py)）
 
 ## 更新说明
 
@@ -45,9 +49,9 @@ on_command、on_natural_language、on_notice、on_request都已在nonebot.plugin
 
 1、初次更新  
 2、更新卸载计划任务
+3、批量操作
 
 ## TODO
 
-1、批量加载、卸载、重载插件（与__bot__.py的逻辑保持一致）  
-2、scheduled_job更优雅的卸载  
-3、前端开发？（前端苦手求救！）
+1、scheduled_job更优雅的卸载  
+2、前端开发？（前端苦手求救！）

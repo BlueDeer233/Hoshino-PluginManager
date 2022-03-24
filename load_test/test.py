@@ -18,6 +18,6 @@ async def test_once(bot: HoshinoBot, ev: CQEvent):
     await bot.send(ev, f"配置文件版本：{version}", at_sender=True)
 
 
-@sv.scheduled_job('cron', id='loadtest', second='*/1')
+@sv.scheduled_job('cron', id='loadtest', second='*/5', replace_existing=True)
 async def test_scheduled_job():
-    logger.info('我被执行了')
+    logger.info('我被调用了')
