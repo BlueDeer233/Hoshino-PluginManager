@@ -11,6 +11,7 @@ on_command、on_natural_language、on_notice、on_request都已在nonebot.plugin
 
 **对于存在scheduled_job的插件必须在重载、卸载插件前卸载所包含的计划任务**  
 **正如nonebot2作者所言，该插件并不能完全卸载/重载插件，可能包含许多bugs，请慎用**  
+**只推荐在开发插件时使用本插件，不推荐在release阶段热重载**  
 欢迎issue、fork、pull request
 
 项目地址：[Hoshino-PluginManager](https://github.com/BlueDeer233/Hoshino-PluginManager)
