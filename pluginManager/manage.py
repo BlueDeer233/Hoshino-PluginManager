@@ -2,16 +2,17 @@ import sys
 import nonebot
 import importlib
 from types import ModuleType
-from nonebot import on_command
+from apscheduler.jobstores.base import JobLookupError
+
+from nonebot import on_command, scheduler
 from hoshino import log, trigger, Service
 from hoshino.typing import CommandSession
-from hoshino.service import _loaded_services, _service_bundle
 from hoshino.trigger import PrefixTrigger, SuffixTrigger, KeywordTrigger, RexTrigger
 
 '''
 适用于hoshinobot的插件管理插件（稍微删改一下就能支持nonebot了）
 仅支持nonebot 1.8.x、1.9.x，不支持nonebot2（已提交issue，但是作者认为冷重载更合适）
-指令：插件列表、加载插件、卸载插件、重载插件、加载插件配置、重载插件配置
+指令：插件列表、加载插件、卸载插件、重载插件、卸载计划任务、加载插件配置、重载插件配置
 on_command、on_natural_language、on_notice、on_request都已在nonebot.plugin.PluginManager.remove_plugin中清理
 已支持Service在hoshino.service管理Dict中的清理
 已支持ServiceFunc在hoshino.trigger.chain中的清理
@@ -43,11 +44,10 @@ async def load_plugin(session: CommandSession):
         await session.finish('请私聊bot')
     if session.ctx['user_id'] not in session.bot.config.SUPERUSERS:
         await session.finish('你不是主人，没有此命令的权限')
-    await session.aget('module', prompt='请选择需要加载的模块')
+    await session.aget('module', prompt='请输入需要加载的模块')
     module = session.state['module']
     module_path = 'hoshino.modules.' + module
-    plugin_names = [p.module.__name__ for p in nonebot.get_loaded_plugins()]
-    if module_path in plugin_names:
+    if module_path in sys.modules:
         await session.finish('该插件已加载，请使用重载插件指令')
     # try:
     #     importlib.import_module('hoshino.config.' + module)
@@ -55,8 +55,7 @@ async def load_plugin(session: CommandSession):
     # except ModuleNotFoundError:
     #     await session.send(f'Not found config of "{module}"')
     nonebot.plugin.load_plugin(module_path)
-    plugin_names = [p.module.__name__ for p in nonebot.get_loaded_plugins()]
-    if module_path in plugin_names:
+    if module_path in sys.modules:
         logger.info(f'Succeeded to load "{module}"')
         await session.send(f'成功加载{module_path}')
     else:
@@ -65,12 +64,14 @@ async def load_plugin(session: CommandSession):
 
 
 def unload_services(moudle: ModuleType):
+    loaded_services = Service.get_loaded_services()
+    service_bundle = Service.get_bundles()
     for value in moudle.__dict__.values():
         if isinstance(value, Service):
             sv_name = value.name
-            del _loaded_services[value.name]
+            del loaded_services[value.name]
             logger.info(f'Succeeded to unload {value.name} in Services')
-            for _bundle in _service_bundle.values():
+            for _bundle in service_bundle.values():
                 for i, sv in enumerate(_bundle):
                     if sv.name == sv_name:
                         _bundle.pop(i)
@@ -103,13 +104,12 @@ async def unload_plugin(session: CommandSession):
         await session.finish('请私聊bot')
     if session.ctx['user_id'] not in session.bot.config.SUPERUSERS:
         await session.finish('你不是主人，没有此命令的权限')
-    await session.aget('module', prompt='请选择需要加载的模块')
+    await session.aget('module', prompt='请输入需要卸载的模块')
     module = session.state['module']
     module_path = 'hoshino.modules.' + module
-    plugin_names = [p.module.__name__ for p in nonebot.get_loaded_plugins()]
-    if module_path not in plugin_names:
+    if module_path not in sys.modules:
         await session.finish(f'该插件未被加载')
-    moudle_obj = [p.module for p in nonebot.get_loaded_plugins() if p.module.__name__ == module_path][0]
+    moudle_obj = sys.modules[module_path]
     unload_services(moudle_obj)
     if nonebot.plugin.PluginManager.remove_plugin(module_path):
         sys.modules.pop(module_path)
@@ -126,13 +126,12 @@ async def reload_plugin(session: CommandSession):
         await session.finish('请私聊bot')
     if session.ctx['user_id'] not in session.bot.config.SUPERUSERS:
         await session.finish('你不是主人，没有此命令的权限')
-    await session.aget('module', prompt='请选择需要加载的模块')
+    await session.aget('module', prompt='请输入需要重载的模块')
     module = session.state['module']
     module_path = 'hoshino.modules.' + module
-    plugin_names = [p.module.__name__ for p in nonebot.get_loaded_plugins()]
-    if module_path not in plugin_names:
+    if module_path not in sys.modules:
         await session.finish('该插件未被加载，请使用加载插件指令')
-    moudle_obj = [p.module for p in nonebot.get_loaded_plugins() if p.module.__name__ == module_path][0]
+    moudle_obj = sys.modules[module_path]
     unload_services(moudle_obj)
     new_plugin = nonebot.plugin.reload_plugin(module_path)
     if new_plugin is not None:
@@ -143,13 +142,29 @@ async def reload_plugin(session: CommandSession):
         await session.send(f'重载失败')
 
 
+@on_command('卸载计划任务', aliases={'scheduled job unload', })
+async def unload_scheduled_job(session: CommandSession):
+    if session.ctx.get('group_id'):
+        await session.finish('请私聊bot')
+    if session.ctx['user_id'] not in session.bot.config.SUPERUSERS:
+        await session.finish('你不是主人，没有此命令的权限')
+    await session.aget('job_id', prompt='请输入需要卸载的计划任务')
+    job_id = session.state['job_id']
+    try:
+        scheduler.remove_job(job_id)
+        await session.send(f'成功卸载计划任务{job_id}')
+    except JobLookupError as e:
+        logger.error(str(e))
+        await session.send(f'卸载失败')
+
+
 @on_command('加载插件配置', aliases={'plug config load', 'plugin config load'})
 async def reload_plugin_config(session: CommandSession):
     if session.ctx.get('group_id'):
         await session.finish('请私聊bot')
     if session.ctx['user_id'] not in session.bot.config.SUPERUSERS:
         await session.finish('你不是主人，没有此命令的权限')
-    await session.aget('module', prompt='请选择需要加载的模块')
+    await session.aget('module', prompt='请输入需要加载的插件配置')
     module = session.state['module']
     config_path = 'hoshino.config.' + module
     if config_path in sys.modules:
@@ -169,7 +184,7 @@ async def reload_plugin_config(session: CommandSession):
         await session.finish('请私聊bot')
     if session.ctx['user_id'] not in session.bot.config.SUPERUSERS:
         await session.finish('你不是主人，没有此命令的权限')
-    await session.aget('module', prompt='请选择需要加载的模块')
+    await session.aget('module', prompt='请输入需要重载的插件配置')
     module = session.state['module']
     config_path = 'hoshino.config.' + module
     try:

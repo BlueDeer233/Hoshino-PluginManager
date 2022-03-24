@@ -16,3 +16,8 @@ async def load_test_help(bot: HoshinoBot, ev: CQEvent):
 async def test_once(bot: HoshinoBot, ev: CQEvent):
     from hoshino.config.load_test import version
     await bot.send(ev, f"配置文件版本：{version}", at_sender=True)
+
+
+@sv.scheduled_job('cron', id='loadtest', second='*/1')
+async def test_scheduled_job():
+    logger.info('我被执行了')

@@ -2,12 +2,12 @@
 
 适用于hoshinobot的插件管理插件（稍微删改一下就能支持nonebot了）  
 仅支持nonebot 1.8.x、1.9.x，不支持nonebot2（已提交issue，但是作者认为冷重载更合适）  
-指令：插件列表、加载插件、卸载插件、重载插件、加载插件配置、重载插件配置  
+指令：插件列表、加载插件、卸载插件、重载插件、卸载计划任务、加载插件配置、重载插件配置  
 on_command、on_natural_language、on_notice、on_request都已在nonebot.plugin.PluginManager.remove_plugin中清理
 
 * 已支持Service在hoshino.service管理Dict中的清理  
 * 已支持ServiceFunc在hoshino.trigger.chain中的清理  
-* 尚未支持scheduled_job在nonebot.scheduler中的清理
+* 已支持scheduled_job在nonebot.scheduler中的清理（需要指定任务id，见指令帮助）
 
 **简而言之对于存在scheduled_job的插件现无法做到卸载与热重载**  
 **正如nonebot2作者所言，该插件并不能完全卸载/重载插件，可能包含许多bugs，请慎用**  
@@ -31,19 +31,22 @@ on_command、on_natural_language、on_notice、on_request都已在nonebot.plugin
 |  加载插件   | 根据引导加载插件（必须精确到module文件下的某个py文件，不需要输.py） |
 |  卸载插件   | 根据引导卸载插件（要求同上）                          |
 |  重载插件   | 根据引导重载插件（要求同上）                          |
+| *卸载计划任务 | 根据引导卸载计划任务（需要输入scheduled_job的id）        |
 | *加载插件配置 | 加载hoshino.config目录下的配置文件（不需要输.py）       |
 | *重载插件配置 | 重载hoshino.config目录下的配置文件（不需要输.py）       |
 
 *注意：配置文件中变量的导入必须在函数内部（详见[test.py](load_test/test.py)）
+*注意：在生成计划任务时必须指定id，否则无法卸载（详见[test.py](load_test/test.py)）
 
 ## 更新说明
 
 **2020-03-24**
 
 1、初次更新
+2、更新卸载计划任务
 
 ## TODO
 
 1、批量加载、卸载、重载插件（与__bot__.py的逻辑保持一致）  
-2、想办法支持上scheduled_job的卸载  
+2、scheduled_job更优雅的卸载  
 3、前端开发？（前端苦手求救！）
