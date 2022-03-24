@@ -42,7 +42,7 @@ on_command、on_natural_language、on_notice、on_request都已在nonebot.plugin
 
 **2020-03-24**
 
-1、初次更新
+1、初次更新  
 2、更新卸载计划任务
 
 ## TODO
