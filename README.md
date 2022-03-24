@@ -35,7 +35,7 @@ on_command、on_natural_language、on_notice、on_request都已在nonebot.plugin
 | *加载插件配置 | 加载hoshino.config目录下的配置文件（不需要输.py）       |
 | *重载插件配置 | 重载hoshino.config目录下的配置文件（不需要输.py）       |
 
-*注意：配置文件中变量的导入必须在函数内部（详见[test.py](load_test/test.py)）
+*注意：配置文件中变量的导入必须在函数内部（详见[test.py](load_test/test.py)）  
 *注意：在生成计划任务时必须指定id，否则无法卸载（详见[test.py](load_test/test.py)）
 
 ## 更新说明
